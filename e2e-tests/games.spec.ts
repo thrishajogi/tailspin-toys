@@ -24,6 +24,38 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should filter games by category and publisher together', async ({ page }) => {
+    await page.goto('/');
+
+    const games = page.locator('[data-filterable-game]:not([hidden]) [data-testid="game-card"]');
+    const categoryFilter = page.getByTestId('category-filter').first();
+    const publisherFilter = page.getByTestId('publisher-filter');
+    const initialCount = await games.count();
+
+    await test.step('Filter by a category', async () => {
+      await expect(categoryFilter).toBeVisible();
+      await categoryFilter.check();
+      await expect(page.getByTestId('filter-status')).not.toHaveText(`Showing ${initialCount} games`);
+    });
+
+    const categoryCount = await games.count();
+    expect(categoryCount).toBeLessThan(initialCount);
+
+    await test.step('Combine the category filter with a publisher', async () => {
+      await expect(publisherFilter).toBeVisible();
+      expect(await publisherFilter.locator('option').count()).toBeGreaterThan(1);
+      await publisherFilter.selectOption({ index: 1 });
+      expect(await games.count()).toBeLessThanOrEqual(categoryCount);
+    });
+
+    await test.step('Clear all filters', async () => {
+      await page.getByTestId('clear-filters').click();
+      await expect(games).toHaveCount(initialCount);
+      await expect(categoryFilter).not.toBeChecked();
+      await expect(publisherFilter).toHaveValue('');
+    });
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;
